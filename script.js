@@ -1,408 +1,455 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-// =====================================
-// SCENE SETUP
-// =====================================
+// ==========================================
+// SCENE
+// ==========================================
 
 const canvas = document.getElementById("viewer");
 
+if (!canvas) {
+    throw new Error("Canvas with id 'viewer' was not found.");
+}
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color("#10141c");
+scene.background = new THREE.Color("#080e16");
 
 const camera = new THREE.PerspectiveCamera(
-    45,
+    35,
     window.innerWidth / window.innerHeight,
     0.1,
     100
 );
 
-camera.position.set(0, 0.5, 9);
+camera.position.set(0, 0.2, 11);
 
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    antialias: true,
-    alpha: false
+    canvas,
+    antialias: true
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
+renderer.toneMappingExposure = 1.5;
 
-// =====================================
+// ==========================================
 // LIGHTING
-// =====================================
+// ==========================================
 
-scene.add(new THREE.AmbientLight("#ffffff", 2));
+scene.add(new THREE.HemisphereLight("#dceaff", "#20212b", 2.5));
 
-const mainLight = new THREE.DirectionalLight("#ffffff", 4);
-mainLight.position.set(3, 5, 8);
-scene.add(mainLight);
+const frontLight = new THREE.DirectionalLight("#ffffff", 4);
+frontLight.position.set(0, 4, 7);
+scene.add(frontLight);
 
-const blueLight = new THREE.PointLight("#668cff", 30);
-blueLight.position.set(-4, 1, 3);
-scene.add(blueLight);
+const leftLight = new THREE.PointLight("#68c8d8", 25);
+leftLight.position.set(-4, 1, 3);
+scene.add(leftLight);
 
-const rimLight = new THREE.PointLight("#a5c8ff", 35);
-rimLight.position.set(2, 4, -3);
-scene.add(rimLight);
+const rightLight = new THREE.PointLight("#d68bff", 30);
+rightLight.position.set(4, 1, 3);
+scene.add(rightLight);
 
-// =====================================
-// WOLF MATERIALS
-// =====================================
+const backLight = new THREE.PointLight("#a5bfff", 40);
+backLight.position.set(0, 3, -4);
+scene.add(backLight);
 
-const silver = new THREE.MeshStandardMaterial({
-    color: "#C0C5CC",
-    metalness: 0.75,
-    roughness: 0.28
-});
+// ==========================================
+// MATERIALS
+// ==========================================
 
-const darkSilver = new THREE.MeshStandardMaterial({
-    color: "#555D68",
-    metalness: 0.6,
-    roughness: 0.35
-});
+function furMaterial(color, roughness = 0.9) {
+    return new THREE.MeshStandardMaterial({
+        color,
+        roughness,
+        metalness: 0.08,
+        flatShading: true
+    });
+}
 
-const innerEarMaterial = new THREE.MeshStandardMaterial({
-    color: "#303743",
-    metalness: 0.35,
-    roughness: 0.55
-});
+const fur = furMaterial("#777b80");
+const furLight = furMaterial("#aeb2b7");
+const furDark = furMaterial("#3d4249");
+const furShadow = furMaterial("#252a32");
+const earInside = furMaterial("#35313e");
+const muzzleMat = furMaterial("#a2a4a7", 0.65);
+const black = furMaterial("#101218", 0.3);
 
-const blackMaterial = new THREE.MeshStandardMaterial({
-    color: "#11151c",
-    metalness: 0.25,
-    roughness: 0.3
-});
-
-const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: "#ffb52e",
-    emissive: "#ff7900",
-    emissiveIntensity: 1.5,
-    metalness: 0.25,
+const eyeMat = new THREE.MeshStandardMaterial({
+    color: "#f7bd54",
+    emissive: "#e87918",
+    emissiveIntensity: 0.7,
     roughness: 0.2
 });
 
-// =====================================
-// WOLF HEAD GROUP
-// =====================================
+// ==========================================
+// WOLF GROUP
+// ==========================================
 
 const wolf = new THREE.Group();
 scene.add(wolf);
 
-// Helper: create a scaled sphere
-function makeSphere(
-    parent,
-    material,
-    position,
-    scale
-) {
-    const geometry = new THREE.SphereGeometry(
-        1,
-        32,
-        24
-    );
+// All geometry is built relative to this group.
+// Front of the wolf faces positive Z.
 
+function sphere(parent, material, pos, scale, detail = 16) {
     const mesh = new THREE.Mesh(
-        geometry,
+        new THREE.SphereGeometry(1, detail, detail),
         material
     );
 
-    mesh.position.set(
-        position[0],
-        position[1],
-        position[2]
-    );
-
-    mesh.scale.set(
-        scale[0],
-        scale[1],
-        scale[2]
-    );
+    mesh.position.set(...pos);
+    mesh.scale.set(...scale);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     parent.add(mesh);
     return mesh;
 }
 
-// Helper: create a cone
-function makeCone(
-    parent,
-    material,
-    position,
-    radius,
-    height,
-    rotation
-) {
-    const geometry = new THREE.ConeGeometry(
-        radius,
-        height,
-        32
-    );
-
+function cone(parent, material, pos, radius, height, rotation = [0, 0, 0]) {
     const mesh = new THREE.Mesh(
-        geometry,
+        new THREE.ConeGeometry(radius, height, 7),
         material
     );
 
-    mesh.position.set(
-        position[0],
-        position[1],
-        position[2]
-    );
-
-    mesh.rotation.set(
-        rotation[0],
-        rotation[1],
-        rotation[2]
-    );
+    mesh.position.set(...pos);
+    mesh.rotation.set(...rotation);
+    mesh.castShadow = true;
 
     parent.add(mesh);
     return mesh;
 }
 
-// =====================================
-// HEAD AND FOREHEAD
-// =====================================
+// ==========================================
+// MAIN SKULL
+// ==========================================
 
-// Main skull
-makeSphere(
-    wolf,
-    silver,
-    [0, 0.2, 0],
-    [1.25, 1.5, 0.8]
+// Broad head
+sphere(
+    wolf, furDark,
+    [0, 0.25, 0],
+    [1.23, 1.48, 0.76],
+    32
 );
 
-// Forehead
-makeSphere(
-    wolf,
-    silver,
-    [0, 0.85, 0.42],
-    [0.85, 0.85, 0.5]
+// Upper forehead
+sphere(
+    wolf, fur,
+    [0, 0.75, 0.25],
+    [0.91, 0.92, 0.62],
+    24
 );
 
-// Brow ridges
-makeSphere(
-    wolf,
-    darkSilver,
-    [-0.48, 0.35, 0.68],
-    [0.5, 0.22, 0.2]
+// Central forehead ridge
+sphere(
+    wolf, furLight,
+    [0, 0.95, 0.72],
+    [0.18, 0.65, 0.14],
+    12
 );
 
-makeSphere(
-    wolf,
-    darkSilver,
-    [0.48, 0.35, 0.68],
-    [0.5, 0.22, 0.2]
-);
+// ==========================================
+// POINTED EARS
+// ==========================================
 
-// =====================================
-// POINTED WOLF EARS
-// =====================================
+for (const side of [-1, 1]) {
+    // Outer ear
+    const ear = cone(
+        wolf, furDark,
+        [side * 0.82, 1.75, -0.02],
+        0.49, 1.65,
+        [0, 0, side * -0.15]
+    );
 
-// Left ear
-makeCone(
-    wolf,
-    silver,
-    [-0.78, 1.85, 0],
-    0.48,
-    1.65,
-    [0, 0, 0.18]
-);
+    ear.scale.set(1, 1, 0.62);
 
-// Right ear
-makeCone(
-    wolf,
-    silver,
-    [0.78, 1.85, 0],
-    0.48,
-    1.65,
-    [0, 0, -0.18]
-);
+    // Inner ear
+    const inner = cone(
+        wolf, earInside,
+        [side * 0.82, 1.78, 0.28],
+        0.31, 1.15,
+        [0, 0, side * -0.15]
+    );
 
-// Inner ears
-makeCone(
-    wolf,
-    innerEarMaterial,
-    [-0.78, 1.9, 0.34],
-    0.25,
-    1.05,
-    [0, 0, 0.18]
-);
+    inner.scale.set(1, 1, 0.5);
 
-makeCone(
-    wolf,
-    innerEarMaterial,
-    [0.78, 1.9, 0.34],
-    0.25,
-    1.05,
-    [0, 0, -0.18]
-);
+    // Fur around ear edges
+    for (let i = 0; i < 7; i++) {
+        const y = 1.35 + i * 0.13;
 
-// =====================================
-// CHEEKS AND FACE FUR
-// =====================================
-
-// Left cheek
-makeSphere(
-    wolf,
-    darkSilver,
-    [-0.8, -0.35, 0.35],
-    [0.55, 0.7, 0.42]
-);
-
-// Right cheek
-makeSphere(
-    wolf,
-    darkSilver,
-    [0.8, -0.35, 0.35],
-    [0.55, 0.7, 0.42]
-);
-
-// Silver cheek highlights
-makeSphere(
-    wolf,
-    silver,
-    [-0.65, -0.55, 0.64],
-    [0.35, 0.55, 0.22]
-);
-
-makeSphere(
-    wolf,
-    silver,
-    [0.65, -0.55, 0.64],
-    [0.35, 0.55, 0.22]
-);
-
-// =====================================
-// EYES
-// =====================================
-
-// Dark eye sockets
-makeSphere(
-    wolf,
-    blackMaterial,
-    [-0.47, 0.25, 0.78],
-    [0.32, 0.22, 0.15]
-);
-
-makeSphere(
-    wolf,
-    blackMaterial,
-    [0.47, 0.25, 0.78],
-    [0.32, 0.22, 0.15]
-);
-
-// Glowing golden eyes
-makeSphere(
-    wolf,
-    eyeMaterial,
-    [-0.47, 0.25, 0.91],
-    [0.19, 0.13, 0.09]
-);
-
-makeSphere(
-    wolf,
-    eyeMaterial,
-    [0.47, 0.25, 0.91],
-    [0.19, 0.13, 0.09]
-);
-
-// Pupils
-makeSphere(
-    wolf,
-    blackMaterial,
-    [-0.47, 0.25, 0.99],
-    [0.045, 0.12, 0.035]
-);
-
-makeSphere(
-    wolf,
-    blackMaterial,
-    [0.47, 0.25, 0.99],
-    [0.045, 0.12, 0.035]
-);
-
-// =====================================
-// LONG WOLF MUZZLE
-// =====================================
-
-// Upper muzzle
-makeSphere(
-    wolf,
-    silver,
-    [0, -0.35, 0.85],
-    [0.43, 0.65, 0.55]
-);
-
-// Lower muzzle / jaw
-makeSphere(
-    wolf,
-    darkSilver,
-    [0, -0.95, 0.75],
-    [0.48, 0.3, 0.5]
-);
-
-// Nose
-makeSphere(
-    wolf,
-    blackMaterial,
-    [0, -0.05, 1.3],
-    [0.27, 0.19, 0.2]
-);
-
-// Nose highlight
-makeSphere(
-    wolf,
-    silver,
-    [-0.07, 0.02, 1.47],
-    [0.07, 0.035, 0.025]
-);
-
-// Mouth line
-makeSphere(
-    wolf,
-    blackMaterial,
-    [0, -0.72, 1.13],
-    [0.3, 0.045, 0.08]
-);
-
-// Chin
-makeSphere(
-    wolf,
-    silver,
-    [0, -1.12, 0.85],
-    [0.3, 0.16, 0.3]
-);
-
-// =====================================
-// EXTRA FUR SPIKES
-// =====================================
-
-// Small pointed fur pieces along the cheeks
-for (let side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-        const fur = makeCone(
+        cone(
             wolf,
-            silver,
+            i % 2 === 0 ? furLight : fur,
             [
-                side * (0.85 + i * 0.08),
-                -0.55 - i * 0.23,
-                0.35
+                side * (0.57 + i * 0.035),
+                y,
+                0.32
             ],
-            0.18,
-            0.65,
-            [0, 0, side * -0.8]
+            0.1,
+            0.4,
+            [0, 0, side * -0.4]
         );
-
-        fur.rotation.x = Math.PI / 2;
     }
 }
 
-// =====================================
-// CONTROLS
-// =====================================
+// ==========================================
+// CHEEK STRUCTURE
+// ==========================================
+
+for (const side of [-1, 1]) {
+    sphere(
+        wolf, furDark,
+        [side * 0.72, -0.22, 0.28],
+        [0.57, 0.76, 0.48],
+        20
+    );
+
+    sphere(
+        wolf, fur,
+        [side * 0.68, -0.42, 0.56],
+        [0.42, 0.56, 0.3],
+        16
+    );
+
+    // Cheekbone
+    sphere(
+        wolf, furLight,
+        [side * 0.48, -0.12, 0.69],
+        [0.3, 0.38, 0.19],
+        16
+    );
+}
+
+// ==========================================
+// EYES AND EYEBROWS
+// ==========================================
+
+for (const side of [-1, 1]) {
+    // Dark eye socket
+    sphere(
+        wolf, black,
+        [side * 0.44, 0.37, 0.76],
+        [0.34, 0.25, 0.18],
+        20
+    );
+
+    // Amber eye
+    sphere(
+        wolf, eyeMat,
+        [side * 0.44, 0.37, 0.91],
+        [0.2, 0.115, 0.09],
+        20
+    );
+
+    // Vertical pupil
+    sphere(
+        wolf, black,
+        [side * 0.44, 0.37, 0.99],
+        [0.045, 0.105, 0.035],
+        12
+    );
+
+    // Brow ridge
+    const brow = sphere(
+        wolf, furDark,
+        [side * 0.44, 0.63, 0.75],
+        [0.4, 0.15, 0.2],
+        16
+    );
+
+    brow.rotation.z = side * -0.15;
+
+    // Highlight above eye
+    sphere(
+        wolf, furLight,
+        [side * 0.44, 0.55, 0.85],
+        [0.3, 0.06, 0.07],
+        12
+    );
+}
+
+// ==========================================
+// LONG WOLF MUZZLE
+// ==========================================
+
+// Bridge of the nose
+sphere(
+    wolf, muzzleMat,
+    [0, 0.02, 0.7],
+    [0.34, 0.64, 0.48],
+    24
+);
+
+// Left and right muzzle pads
+for (const side of [-1, 1]) {
+    sphere(
+        wolf, furLight,
+        [side * 0.21, -0.38, 1.02],
+        [0.3, 0.32, 0.36],
+        20
+    );
+
+    // Dark whisker pad
+    sphere(
+        wolf, furDark,
+        [side * 0.23, -0.52, 1.13],
+        [0.24, 0.2, 0.2],
+        16
+    );
+
+    // Whisker spots
+    for (let i = 0; i < 8; i++) {
+        sphere(
+            wolf, black,
+            [
+                side * (0.12 + (i % 3) * 0.11),
+                -0.42 - Math.floor(i / 3) * 0.08,
+                1.3
+            ],
+            [0.025, 0.025, 0.018],
+            8
+        );
+    }
+}
+
+// Nose
+sphere(
+    wolf, black,
+    [0, -0.08, 1.42],
+    [0.25, 0.17, 0.18],
+    20
+);
+
+// Nose highlight
+sphere(
+    wolf, furLight,
+    [-0.07, -0.02, 1.57],
+    [0.08, 0.025, 0.02],
+    8
+);
+
+// Jaw
+sphere(
+    wolf, furDark,
+    [0, -0.83, 0.75],
+    [0.46, 0.32, 0.42],
+    20
+);
+
+// Lower lip
+sphere(
+    wolf, black,
+    [0, -0.77, 1.02],
+    [0.28, 0.045, 0.08],
+    12
+);
+
+// Chin
+sphere(
+    wolf, furLight,
+    [0, -1.02, 0.86],
+    [0.31, 0.17, 0.3],
+    16
+);
+
+// ==========================================
+// LAYERED FUR
+// ==========================================
+
+function addFur(x, y, z, length, angle, material, width = 0.11) {
+    const strand = new THREE.Mesh(
+        new THREE.ConeGeometry(width, length, 5),
+        material
+    );
+
+    strand.position.set(x, y, z);
+    strand.rotation.z = angle;
+    strand.rotation.x = -0.3;
+
+    strand.castShadow = true;
+    wolf.add(strand);
+
+    return strand;
+}
+
+// Forehead fur layers
+for (let i = 0; i < 30; i++) {
+    const x = THREE.MathUtils.randFloat(-0.72, 0.72);
+    const y = THREE.MathUtils.randFloat(0.65, 1.4);
+
+    addFur(
+        x, y, THREE.MathUtils.randFloat(0.55, 0.75),
+        THREE.MathUtils.randFloat(0.15, 0.45),
+        THREE.MathUtils.randFloat(-0.5, 0.5),
+        Math.random() > 0.5 ? furLight : fur,
+        THREE.MathUtils.randFloat(0.04, 0.1)
+    );
+}
+
+// Cheek fur tufts
+for (const side of [-1, 1]) {
+    for (let i = 0; i < 40; i++) {
+        const x = side * THREE.MathUtils.randFloat(0.55, 1.05);
+        const y = THREE.MathUtils.randFloat(-0.9, 0.2);
+        const z = THREE.MathUtils.randFloat(0.35, 0.65);
+
+        addFur(
+            x, y, z,
+            THREE.MathUtils.randFloat(0.2, 0.55),
+            side * THREE.MathUtils.randFloat(0.3, 1.1),
+            Math.random() > 0.65 ? furLight : furDark,
+            THREE.MathUtils.randFloat(0.05, 0.13)
+        );
+    }
+}
+
+// ==========================================
+// THICK NECK AND MANE
+// ==========================================
+
+sphere(
+    wolf, furDark,
+    [0, -1.45, -0.05],
+    [1.03, 0.95, 0.62],
+    24
+);
+
+// Layered neck fur
+for (let i = 0; i < 110; i++) {
+    const x = THREE.MathUtils.randFloat(-0.9, 0.9);
+    const y = THREE.MathUtils.randFloat(-2.15, -0.85);
+    const z = THREE.MathUtils.randFloat(-0.25, 0.45);
+
+    const sideAngle = x * 0.7;
+
+    addFur(
+        x, y, z,
+        THREE.MathUtils.randFloat(0.25, 0.65),
+        sideAngle,
+        Math.random() > 0.6 ? fur : furDark,
+        THREE.MathUtils.randFloat(0.055, 0.13)
+    );
+}
+
+// Central chest fur
+for (let i = 0; i < 18; i++) {
+    addFur(
+        THREE.MathUtils.randFloat(-0.4, 0.4),
+        -1.55 - i * 0.025,
+        0.38,
+        THREE.MathUtils.randFloat(0.25, 0.55),
+        THREE.MathUtils.randFloat(-0.25, 0.25),
+        i % 2 === 0 ? furLight : furDark,
+        0.09
+    );
+}
+
+// ==========================================
+// INTERACTIVE CONTROLS
+// ==========================================
 
 const controls = new OrbitControls(
     camera,
@@ -413,33 +460,33 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 
 controls.enablePan = false;
+
 controls.minDistance = 5;
-controls.maxDistance = 14;
+controls.maxDistance = 16;
 
-controls.target.set(0, 0.4, 0);
+controls.minPolarAngle = 0.3;
+controls.maxPolarAngle = Math.PI - 0.3;
 
-// Start facing forward
+controls.target.set(0, 0, 0);
 controls.update();
 
 // Reset button
-const resetButton = document.getElementById("reset");
+const reset = document.getElementById("reset");
 
-if (resetButton) {
-    resetButton.addEventListener("click", () => {
-        camera.position.set(0, 0.5, 9);
-        controls.target.set(0, 0.4, 0);
+if (reset) {
+    reset.addEventListener("click", () => {
+        camera.position.set(0, 0.2, 11);
+        controls.target.set(0, 0, 0);
         controls.update();
     });
 }
 
-// =====================================
+// ==========================================
 // RESIZE
-// =====================================
+// ==========================================
 
 window.addEventListener("resize", () => {
-    camera.aspect =
-        window.innerWidth / window.innerHeight;
-
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
     renderer.setSize(
@@ -452,15 +499,14 @@ window.addEventListener("resize", () => {
     );
 });
 
-// =====================================
+// ==========================================
 // ANIMATION
-// =====================================
+// ==========================================
 
 function animate() {
     requestAnimationFrame(animate);
 
     controls.update();
-
     renderer.render(scene, camera);
 }
 
