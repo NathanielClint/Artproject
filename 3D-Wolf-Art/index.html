@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>3D Wolf Art Gallery</title>
+
+    <!-- Connect CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Three.js and artwork -->
+    <script type="module" src="script.js"></script>
+</head>
+
+<body>
+
+    <header class="gallery-header">
+        <h1>WOLF</h1>
+        <p>AN INTERACTIVE 3D ART EXPERIENCE</p>
+    </header>
+
+    <main>
+        <canvas id="viewer"></canvas>
+
+        <div class="gallery-info">
+            <span class="status-dot"></span>
+            INTERACTIVE SCULPTURE
+        </div>
+
+        <div class="instructions">
+            <span>DRAG TO ROTATE</span>
+            <span class="separator">•</span>
+            <span>SCROLL TO ZOOM</span>
+        </div>
+
+        <button id="reset" class="reset-button">
+            <span>↺</span> Reset View
+        </button>
+    </main>
+
+    <footer>
+        <span>3D ART PROJECT</span>
+        <span>EXPLORE FROM EVERY ANGLE</span>
+    </footer>
+
+</body>
+</html>
