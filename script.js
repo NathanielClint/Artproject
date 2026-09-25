@@ -1,17 +1,14 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js";
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js";
+
 // =====================================
-// 1. SCENE SETUP
+// SCENE SETUP
 // =====================================
 
 const canvas = document.getElementById("viewer");
 
-if (!canvas) {
-    throw new Error("Canvas #viewer was not found in index.html");
-}
-
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0b0d);
+scene.background = new THREE.Color("#10141c");
 
 const camera = new THREE.PerspectiveCamera(
     45,
@@ -20,285 +17,423 @@ const camera = new THREE.PerspectiveCamera(
     100
 );
 
-camera.position.set(0, 0, 10);
+camera.position.set(0, 0.5, 9);
 
 const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true
+    canvas: canvas,
+    antialias: true,
+    alpha: false
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.3;
 
 // =====================================
-// 2. INTERACTIVE CONTROLS
+// LIGHTING
 // =====================================
 
-const controls = new OrbitControls(camera, canvas);
+scene.add(new THREE.AmbientLight("#ffffff", 2));
 
-controls.enableDamping = true;
-controls.dampingFactor = 0.06;
-controls.enableZoom = true;
-controls.enablePan = false;
-
-controls.minDistance = 4;
-controls.maxDistance = 18;
-
-// =====================================
-// 3. LIGHTING
-// =====================================
-
-scene.add(
-    new THREE.AmbientLight(0xffffff, 2)
-);
-
-const mainLight = new THREE.DirectionalLight(
-    0xffffff,
-    3
-);
-
-mainLight.position.set(5, 6, 8);
+const mainLight = new THREE.DirectionalLight("#ffffff", 4);
+mainLight.position.set(3, 5, 8);
 scene.add(mainLight);
 
-const blueLight = new THREE.PointLight(
-    0x6688ff,
-    35
-);
-
-blueLight.position.set(-5, 2, -4);
+const blueLight = new THREE.PointLight("#668cff", 30);
+blueLight.position.set(-4, 1, 3);
 scene.add(blueLight);
 
-const rimLight = new THREE.PointLight(
-    0xffffff,
-    25
-);
-
-rimLight.position.set(3, -3, -3);
+const rimLight = new THREE.PointLight("#a5c8ff", 35);
+rimLight.position.set(2, 4, -3);
 scene.add(rimLight);
 
 // =====================================
-// 4. ARTWORK GROUP
+// WOLF MATERIALS
 // =====================================
 
-const artwork = new THREE.Group();
-scene.add(artwork);
-
-const fragments = new THREE.Group();
-artwork.add(fragments);
-
-// Materials
-
-const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xc0c5cc,
-    metalness: 0.65,
-    roughness: 0.3,
-    flatShading: true
-});
-
-const darkMaterial = new THREE.MeshStandardMaterial({
-    color: 0x555d68,
-    metalness: 0.7,
-    roughness: 0.32,
-    flatShading: true
-});
-
-const blueMaterial = new THREE.MeshStandardMaterial({
-    color: 0x667f99,
+const silver = new THREE.MeshStandardMaterial({
+    color: "#C0C5CC",
     metalness: 0.75,
-    roughness: 0.25,
-    flatShading: true
+    roughness: 0.28
+});
+
+const darkSilver = new THREE.MeshStandardMaterial({
+    color: "#555D68",
+    metalness: 0.6,
+    roughness: 0.35
+});
+
+const innerEarMaterial = new THREE.MeshStandardMaterial({
+    color: "#303743",
+    metalness: 0.35,
+    roughness: 0.55
+});
+
+const blackMaterial = new THREE.MeshStandardMaterial({
+    color: "#11151c",
+    metalness: 0.25,
+    roughness: 0.3
+});
+
+const eyeMaterial = new THREE.MeshStandardMaterial({
+    color: "#ffb52e",
+    emissive: "#ff7900",
+    emissiveIntensity: 1.5,
+    metalness: 0.25,
+    roughness: 0.2
 });
 
 // =====================================
-// 5. WOLF SHAPE
+// WOLF HEAD GROUP
 // =====================================
 
-// Coordinates describe a side-view wolf silhouette.
-// The wolf faces left.
+const wolf = new THREE.Group();
+scene.add(wolf);
 
-const wolfOutline = [
-    [-2.7,  0.3],
-    [-2.3,  0.55],
-    [-2.2,  1.35],
-    [-1.9,  1.75],
-    [-1.6,  1.0],
-    [-1.0,  0.95],
-    [-0.5,  0.65],
-    [ 0.5,  0.8],
-    [ 1.4,  1.1],
-    [ 2.0,  1.0],
-    [ 2.6,  1.45],
-    [ 2.4,  0.7],
-    [ 1.9,  0.3],
-    [ 1.8, -0.2],
-    [ 1.2, -0.4],
-    [ 1.0, -1.5],
-    [ 0.6, -1.5],
-    [ 0.4, -0.45],
-    [-0.8, -0.45],
-    [-1.1, -1.5],
-    [-1.5, -1.5],
-    [-1.5, -0.3],
-    [-2.1, -0.1],
-    [-2.7,  0.0]
-];
+// Helper: create a scaled sphere
+function makeSphere(
+    parent,
+    material,
+    position,
+    scale
+) {
+    const geometry = new THREE.SphereGeometry(
+        1,
+        32,
+        24
+    );
 
-// =====================================
-// 6. POINT-IN-POLYGON FUNCTION
-// =====================================
+    const mesh = new THREE.Mesh(
+        geometry,
+        material
+    );
 
-// Checks whether a point is inside the wolf outline.
-// This avoids depending on ShapeUtils argument order.
+    mesh.position.set(
+        position[0],
+        position[1],
+        position[2]
+    );
 
-function isInsideWolf(x, y) {
-    let inside = false;
+    mesh.scale.set(
+        scale[0],
+        scale[1],
+        scale[2]
+    );
 
-    for (
-        let i = 0, j = wolfOutline.length - 1;
-        i < wolfOutline.length;
-        j = i++
-    ) {
-        const xi = wolfOutline[i][0];
-        const yi = wolfOutline[i][1];
+    parent.add(mesh);
+    return mesh;
+}
 
-        const xj = wolfOutline[j][0];
-        const yj = wolfOutline[j][1];
+// Helper: create a cone
+function makeCone(
+    parent,
+    material,
+    position,
+    radius,
+    height,
+    rotation
+) {
+    const geometry = new THREE.ConeGeometry(
+        radius,
+        height,
+        32
+    );
 
-        const intersects =
-            ((yi > y) !== (yj > y)) &&
-            (x < (xj - xi) * (y - yi) /
-                (yj - yi) + xi);
+    const mesh = new THREE.Mesh(
+        geometry,
+        material
+    );
 
-        if (intersects) {
-            inside = !inside;
-        }
-    }
+    mesh.position.set(
+        position[0],
+        position[1],
+        position[2]
+    );
 
-    return inside;
+    mesh.rotation.set(
+        rotation[0],
+        rotation[1],
+        rotation[2]
+    );
+
+    parent.add(mesh);
+    return mesh;
 }
 
 // =====================================
-// 7. GENERATE WOLF FRAGMENTS
+// HEAD AND FOREHEAD
 // =====================================
 
-// Each fragment is placed inside the wolf silhouette.
-// From the front, the pieces form a wolf-shaped image.
-
-const fragmentGeometry = new THREE.TetrahedronGeometry(
-    1,
-    0
+// Main skull
+makeSphere(
+    wolf,
+    silver,
+    [0, 0.2, 0],
+    [1.25, 1.5, 0.8]
 );
 
-const materials = [
-    silverMaterial,
-    silverMaterial,
-    silverMaterial,
-    darkMaterial,
-    blueMaterial
-];
+// Forehead
+makeSphere(
+    wolf,
+    silver,
+    [0, 0.85, 0.42],
+    [0.85, 0.85, 0.5]
+);
 
-const fragmentCount = 1100;
+// Brow ridges
+makeSphere(
+    wolf,
+    darkSilver,
+    [-0.48, 0.35, 0.68],
+    [0.5, 0.22, 0.2]
+);
 
-for (let i = 0; i < fragmentCount; i++) {
+makeSphere(
+    wolf,
+    darkSilver,
+    [0.48, 0.35, 0.68],
+    [0.5, 0.22, 0.2]
+);
 
-    const x = THREE.MathUtils.randFloat(-2.8, 2.7);
-    const y = THREE.MathUtils.randFloat(-1.6, 1.8);
+// =====================================
+// POINTED WOLF EARS
+// =====================================
 
-    if (!isInsideWolf(x, y)) {
-        continue;
+// Left ear
+makeCone(
+    wolf,
+    silver,
+    [-0.78, 1.85, 0],
+    0.48,
+    1.65,
+    [0, 0, 0.18]
+);
+
+// Right ear
+makeCone(
+    wolf,
+    silver,
+    [0.78, 1.85, 0],
+    0.48,
+    1.65,
+    [0, 0, -0.18]
+);
+
+// Inner ears
+makeCone(
+    wolf,
+    innerEarMaterial,
+    [-0.78, 1.9, 0.34],
+    0.25,
+    1.05,
+    [0, 0, 0.18]
+);
+
+makeCone(
+    wolf,
+    innerEarMaterial,
+    [0.78, 1.9, 0.34],
+    0.25,
+    1.05,
+    [0, 0, -0.18]
+);
+
+// =====================================
+// CHEEKS AND FACE FUR
+// =====================================
+
+// Left cheek
+makeSphere(
+    wolf,
+    darkSilver,
+    [-0.8, -0.35, 0.35],
+    [0.55, 0.7, 0.42]
+);
+
+// Right cheek
+makeSphere(
+    wolf,
+    darkSilver,
+    [0.8, -0.35, 0.35],
+    [0.55, 0.7, 0.42]
+);
+
+// Silver cheek highlights
+makeSphere(
+    wolf,
+    silver,
+    [-0.65, -0.55, 0.64],
+    [0.35, 0.55, 0.22]
+);
+
+makeSphere(
+    wolf,
+    silver,
+    [0.65, -0.55, 0.64],
+    [0.35, 0.55, 0.22]
+);
+
+// =====================================
+// EYES
+// =====================================
+
+// Dark eye sockets
+makeSphere(
+    wolf,
+    blackMaterial,
+    [-0.47, 0.25, 0.78],
+    [0.32, 0.22, 0.15]
+);
+
+makeSphere(
+    wolf,
+    blackMaterial,
+    [0.47, 0.25, 0.78],
+    [0.32, 0.22, 0.15]
+);
+
+// Glowing golden eyes
+makeSphere(
+    wolf,
+    eyeMaterial,
+    [-0.47, 0.25, 0.91],
+    [0.19, 0.13, 0.09]
+);
+
+makeSphere(
+    wolf,
+    eyeMaterial,
+    [0.47, 0.25, 0.91],
+    [0.19, 0.13, 0.09]
+);
+
+// Pupils
+makeSphere(
+    wolf,
+    blackMaterial,
+    [-0.47, 0.25, 0.99],
+    [0.045, 0.12, 0.035]
+);
+
+makeSphere(
+    wolf,
+    blackMaterial,
+    [0.47, 0.25, 0.99],
+    [0.045, 0.12, 0.035]
+);
+
+// =====================================
+// LONG WOLF MUZZLE
+// =====================================
+
+// Upper muzzle
+makeSphere(
+    wolf,
+    silver,
+    [0, -0.35, 0.85],
+    [0.43, 0.65, 0.55]
+);
+
+// Lower muzzle / jaw
+makeSphere(
+    wolf,
+    darkSilver,
+    [0, -0.95, 0.75],
+    [0.48, 0.3, 0.5]
+);
+
+// Nose
+makeSphere(
+    wolf,
+    blackMaterial,
+    [0, -0.05, 1.3],
+    [0.27, 0.19, 0.2]
+);
+
+// Nose highlight
+makeSphere(
+    wolf,
+    silver,
+    [-0.07, 0.02, 1.47],
+    [0.07, 0.035, 0.025]
+);
+
+// Mouth line
+makeSphere(
+    wolf,
+    blackMaterial,
+    [0, -0.72, 1.13],
+    [0.3, 0.045, 0.08]
+);
+
+// Chin
+makeSphere(
+    wolf,
+    silver,
+    [0, -1.12, 0.85],
+    [0.3, 0.16, 0.3]
+);
+
+// =====================================
+// EXTRA FUR SPIKES
+// =====================================
+
+// Small pointed fur pieces along the cheeks
+for (let side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+        const fur = makeCone(
+            wolf,
+            silver,
+            [
+                side * (0.85 + i * 0.08),
+                -0.55 - i * 0.23,
+                0.35
+            ],
+            0.18,
+            0.65,
+            [0, 0, side * -0.8]
+        );
+
+        fur.rotation.x = Math.PI / 2;
     }
-
-    const piece = new THREE.Mesh(
-        fragmentGeometry,
-        materials[
-            Math.floor(Math.random() * materials.length)
-        ]
-    );
-
-    const size = THREE.MathUtils.randFloat(0.035, 0.12);
-
-    piece.scale.set(
-        size * THREE.MathUtils.randFloat(0.7, 1.5),
-        size * THREE.MathUtils.randFloat(0.7, 1.5),
-        size * THREE.MathUtils.randFloat(0.7, 1.5)
-    );
-
-    piece.position.set(
-        x,
-        y,
-        THREE.MathUtils.randFloat(-0.25, 0.25)
-    );
-
-    piece.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-    );
-
-    fragments.add(piece);
 }
 
 // =====================================
-// 8. FLOATING OUTER FRAGMENTS
+// CONTROLS
 // =====================================
 
-// Scattered pieces surrounding the wolf.
+const controls = new OrbitControls(
+    camera,
+    renderer.domElement
+);
 
-for (let i = 0; i < 120; i++) {
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
 
-    let x, y;
+controls.enablePan = false;
+controls.minDistance = 5;
+controls.maxDistance = 14;
 
-    do {
-        x = THREE.MathUtils.randFloat(-3.6, 3.6);
-        y = THREE.MathUtils.randFloat(-2.5, 2.5);
-    } while (isInsideWolf(x, y));
+controls.target.set(0, 0.4, 0);
 
-    const piece = new THREE.Mesh(
-        fragmentGeometry,
-        Math.random() > 0.5
-            ? silverMaterial
-            : darkMaterial
-    );
+// Start facing forward
+controls.update();
 
-    const size = THREE.MathUtils.randFloat(0.04, 0.14);
-
-    piece.scale.setScalar(size);
-
-    piece.position.set(
-        x,
-        y,
-        THREE.MathUtils.randFloat(-0.8, 0.8)
-    );
-
-    piece.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-    );
-
-    fragments.add(piece);
-}
-
-// =====================================
-// 9. RESET BUTTON
-// =====================================
-
+// Reset button
 const resetButton = document.getElementById("reset");
 
 if (resetButton) {
     resetButton.addEventListener("click", () => {
-        camera.position.set(0, 0, 10);
-
-        controls.target.set(0, 0, 0);
-
+        camera.position.set(0, 0.5, 9);
+        controls.target.set(0, 0.4, 0);
         controls.update();
     });
 }
 
 // =====================================
-// 10. RESPONSIVE RESIZE
+// RESIZE
 // =====================================
 
 window.addEventListener("resize", () => {
@@ -318,7 +453,7 @@ window.addEventListener("resize", () => {
 });
 
 // =====================================
-// 11. ANIMATION
+// ANIMATION
 // =====================================
 
 function animate() {
@@ -330,5 +465,3 @@ function animate() {
 }
 
 animate();
-
-console.log("3D Wolf Art loaded successfully!");
