@@ -1,49 +1,100 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>3D Wolf Art Gallery</title>
+    <title>3D Wolf Art</title>
 
-    <!-- Connect CSS -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Website styling -->
+    <link rel="stylesheet" href="./style.css">
 
-    <!-- Three.js and artwork -->
-    <script type="module" src="script.js"></script>
+    <!-- Import map for Three.js modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #10141c;
+        }
+
+        #viewer {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+            touch-action: none;
+        }
+
+        #reset {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+
+            padding: 12px 28px;
+            border: 1px solid #667f99;
+            border-radius: 30px;
+
+            background: rgba(20, 26, 36, 0.9);
+            color: #ffffff;
+
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        #reset:hover {
+            background: #667f99;
+        }
+
+        #title {
+            position: fixed;
+            top: 25px;
+            left: 0;
+            width: 100%;
+            z-index: 5;
+
+            text-align: center;
+            color: #c0c5cc;
+            font-family: Arial, sans-serif;
+            font-size: 22px;
+            letter-spacing: 5px;
+            pointer-events: none;
+        }
+    </style>
 </head>
 
 <body>
 
-    <header class="gallery-header">
-        <h1>WOLF</h1>
-        <p>AN INTERACTIVE 3D ART EXPERIENCE</p>
-    </header>
+    <h1 id="title">WOLF</h1>
 
-    <main>
-        <canvas id="viewer"></canvas>
+    <!-- Three.js rendering canvas -->
+    <canvas id="viewer"></canvas>
 
-        <div class="gallery-info">
-            <span class="status-dot"></span>
-            INTERACTIVE SCULPTURE
-        </div>
+    <!-- Reset camera button -->
+    <button id="reset" type="button">
+        RESET VIEW
+    </button>
 
-        <div class="instructions">
-            <span>DRAG TO ROTATE</span>
-            <span class="separator">•</span>
-            <span>SCROLL TO ZOOM</span>
-        </div>
-
-        <button id="reset" class="reset-button">
-            <span>↺</span> Reset View
-        </button>
-    </main>
-
-    <footer>
-        <span>3D ART PROJECT</span>
-        <span>EXPLORE FROM EVERY ANGLE</span>
-    </footer>
+    <!-- Main 3D script -->
+    <script type="module" src="./script.js"></script>
 
 </body>
 </html>
